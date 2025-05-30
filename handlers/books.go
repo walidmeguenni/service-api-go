@@ -3,9 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"github.com/gorilla/mux"	
 	"service-api/models"
-
-	"github.com/gorilla/mux"
 )
 
 var books [] models.Book
