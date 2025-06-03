@@ -32,7 +32,7 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(
 			utils.Response{
 				Status:  false,
-				Message: "Invalide request body",
+				Message: err.Error(),
 				Data:    nil,
 			},
 		)
@@ -43,7 +43,7 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(utils.Response{
 			Status:  false,
-			Message: "Validation failed!",
+			Message: err.Error(),
 			Data:    nil,
 		})
 		return
@@ -101,10 +101,11 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 				json.NewEncoder(w).Encode(
 					utils.Response{
 						Status: false,
-						Message: "Invalide body request!",
+						Message: err.Error(),
 						Data: nil,
 					},
 				)
+				return
 			}
 			book.ID = id
 			books = append(books, book)
