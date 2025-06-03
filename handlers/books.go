@@ -13,7 +13,14 @@ var books []models.Book
 
 func GetBooks(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(books)
+	w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(
+		utils.Response{
+			Status: true,
+			Message: "List Books returned successfully",
+			Data: books,
+		},
+	)
 }
 
 func CreateBook(w http.ResponseWriter, r *http.Request) {
@@ -43,23 +50,13 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 	}
 	books = append(books, book)
 	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(
+	json.NewEncoder(w).Encode(
 		utils.Response{
 			Status:  true,
 			Message: "Book created successfully",
 			Data:    book,
 		},
-	); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(
-			utils.Response{
-				Status:  false,
-				Message: "Error in creating Book",
-				Data:    nil,
-			},
-		)
-		return
-	}
+	);
 }
 
 func GetBookById(w http.ResponseWriter, r *http.Request) {
@@ -68,14 +65,29 @@ func GetBookById(w http.ResponseWriter, r *http.Request) {
 	id := params["id"]
 	for _, item := range books {
 		if item.ID == id {
-			json.NewEncoder(w).Encode(item)
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(
+				utils.Response{
+					Status: true,
+					Message: "Book returned successfully",
+					Data: item,
+				},
+			)
 			return
 		}
 	}
-	http.Error(w, "Book not found with id: "+id, http.StatusNotFound)
+	w.WriteHeader(http.StatusNotFound)
+	json.NewEncoder(w).Encode(
+		utils.Response{
+			Status: false,
+			Message: "Book not found with id"+ id,
+			Data: nil,
+		},
+	)
 }
 
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	id := params["id"]
@@ -83,13 +95,38 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 		if item.ID == id {
 			books = append(books[:i], books[i+1:]...)
 			var book models.Book
-			_ = json.NewDecoder(r.Body).Decode(&book)
+			if err := json.NewDecoder(r.Body).Decode(&book);
+			err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(
+					utils.Response{
+						Status: false,
+						Message: "Invalide body request!",
+						Data: nil,
+					},
+				)
+			}
 			book.ID = id
 			books = append(books, book)
-			json.NewEncoder(w).Encode(book)
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(
+				utils.Response{
+					Status: true,
+					Message: "Book updated successfully",
+					Data: book,
+				},
+			)
 			return
 		}
 	}
+	w.WriteHeader(http.StatusNotFound)
+	json.NewEncoder(w).Encode(
+		utils.Response{
+			Status: false,
+			Message: "Book not found with id"+ id,
+			Data: nil,
+		},
+	)
 }
 
 func DeleteBook(w http.ResponseWriter, r *http.Request) {
@@ -99,8 +136,23 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 	for i, item := range books {
 		if item.ID == id {
 			books = append(books[:i], books[i+1:]...)
-			break
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(
+				utils.Response{
+					Status: true,
+					Message: "Book deleted successfully",
+					Data: item,
+				},
+			)
+			return
 		}
 	}
-	json.NewEncoder(w).Encode(books)
+	w.WriteHeader(http.StatusNotFound)
+	json.NewEncoder(w).Encode(
+		utils.Response{
+			Status: false,
+			Message: "Book not found with id"+ id,
+			Data: nil,
+		},
+	)
 }
