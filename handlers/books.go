@@ -2,24 +2,64 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/mux"
 	"net/http"
-	"github.com/gorilla/mux"	
 	"service-api/models"
+	"service-api/utils"
 )
 
-var books [] models.Book
+var books []models.Book
 
 func GetBooks(w http.ResponseWriter, _ *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(books)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(books)
 }
 
 func CreateBook(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "application/json")
+	defer r.Body.Close()
+	w.Header().Set("Content-Type", "application/json")
 	var book models.Book
-	_ = json.NewDecoder(r.Body).Decode(&book)
+	if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(
+			utils.Response{
+				Status:  false,
+				Message: "Invalide request body",
+				Data:    nil,
+			},
+		)
+		return
+	}
+	var validate = validator.New()
+	if err := validate.Struct(book); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(utils.Response{
+			Status:  false,
+			Message: "Validation failed!",
+			Data:    nil,
+		})
+		return
+	}
 	books = append(books, book)
-	json.NewEncoder(w).Encode(book)
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(
+		utils.Response{
+			Status:  true,
+			Message: "Book created successfully",
+			Data:    book,
+		},
+	); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(
+			utils.Response{
+				Status:  false,
+				Message: "Error in creating Book",
+				Data:    nil,
+			},
+		)
+		return
+	}
 }
 
 func GetBookById(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +72,7 @@ func GetBookById(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	json.NewEncoder(w).Encode(&models.Book{})
+	http.Error(w, "Book not found with id: "+id, http.StatusNotFound)
 }
 
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
