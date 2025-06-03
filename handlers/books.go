@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"service-api/models"
-	"service-api/utils"
+	"service-api/utils/types"
 )
 
 var books []models.Book
@@ -14,11 +14,11 @@ var books []models.Book
 func GetBooks(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(
-		utils.Response{
-			Status: true,
+	json.NewEncoder(w).Encode(
+		types.Response{
+			Status:  true,
 			Message: "List Books returned successfully",
-			Data: books,
+			Data:    books,
 		},
 	)
 }
@@ -30,7 +30,7 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(
-			utils.Response{
+			types.Response{
 				Status:  false,
 				Message: err.Error(),
 				Data:    nil,
@@ -41,7 +41,7 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 	var validate = validator.New()
 	if err := validate.Struct(book); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(utils.Response{
+		json.NewEncoder(w).Encode(types.Response{
 			Status:  false,
 			Message: err.Error(),
 			Data:    nil,
@@ -51,12 +51,12 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 	books = append(books, book)
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(
-		utils.Response{
+		types.Response{
 			Status:  true,
 			Message: "Book created successfully",
 			Data:    book,
 		},
-	);
+	)
 }
 
 func GetBookById(w http.ResponseWriter, r *http.Request) {
@@ -67,10 +67,10 @@ func GetBookById(w http.ResponseWriter, r *http.Request) {
 		if item.ID == id {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(
-				utils.Response{
-					Status: true,
+				types.Response{
+					Status:  true,
 					Message: "Book returned successfully",
-					Data: item,
+					Data:    item,
 				},
 			)
 			return
@@ -78,10 +78,10 @@ func GetBookById(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNotFound)
 	json.NewEncoder(w).Encode(
-		utils.Response{
-			Status: false,
-			Message: "Book not found with id"+ id,
-			Data: nil,
+		types.Response{
+			Status:  false,
+			Message: "Book not found with id" + id,
+			Data:    nil,
 		},
 	)
 }
@@ -95,14 +95,13 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 		if item.ID == id {
 			books = append(books[:i], books[i+1:]...)
 			var book models.Book
-			if err := json.NewDecoder(r.Body).Decode(&book);
-			err != nil {
+			if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				json.NewEncoder(w).Encode(
-					utils.Response{
-						Status: false,
+					types.Response{
+						Status:  false,
 						Message: err.Error(),
-						Data: nil,
+						Data:    nil,
 					},
 				)
 				return
@@ -111,10 +110,10 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 			books = append(books, book)
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(
-				utils.Response{
-					Status: true,
+				types.Response{
+					Status:  true,
 					Message: "Book updated successfully",
-					Data: book,
+					Data:    book,
 				},
 			)
 			return
@@ -122,10 +121,10 @@ func UpdateBook(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNotFound)
 	json.NewEncoder(w).Encode(
-		utils.Response{
-			Status: false,
-			Message: "Book not found with id"+ id,
-			Data: nil,
+		types.Response{
+			Status:  false,
+			Message: "Book not found with id" + id,
+			Data:    nil,
 		},
 	)
 }
@@ -139,10 +138,10 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 			books = append(books[:i], books[i+1:]...)
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(
-				utils.Response{
-					Status: true,
+				types.Response{
+					Status:  true,
 					Message: "Book deleted successfully",
-					Data: item,
+					Data:    item,
 				},
 			)
 			return
@@ -150,10 +149,10 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNotFound)
 	json.NewEncoder(w).Encode(
-		utils.Response{
-			Status: false,
-			Message: "Book not found with id"+ id,
-			Data: nil,
+		types.Response{
+			Status:  false,
+			Message: "Book not found with id" + id,
+			Data:    nil,
 		},
 	)
 }
