@@ -1,16 +1,21 @@
 package routes
 
 import (
-	"github.com/gorilla/mux"
 	"service-api/handlers"
+
+	"github.com/gorilla/mux"
+	"gorm.io/gorm"
 )
 
-func SetupRouters() *mux.Router {
+func SetupRouters(db *gorm.DB) *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/books", handlers.GetBooks).Methods("GET")
-	router.HandleFunc("/books", handlers.CreateBook).Methods("POST")
-	router.HandleFunc("/books/{id}", handlers.GetBookById).Methods("GET")
-	router.HandleFunc("/books/{id}", handlers.UpdateBook).Methods("PUT")
-	router.HandleFunc("/books/{id}", handlers.DeleteBook).Methods("DELETE")
+
+	bookHandler := handlers.NewBookHandler(db)
+
+	router.HandleFunc("/books", bookHandler.GetBooks).Methods("GET")
+	router.HandleFunc("/books", bookHandler.CreateBook).Methods("POST")
+	router.HandleFunc("/books/{id}", bookHandler.GetBookById).Methods("GET")
+	router.HandleFunc("/books/{id}", bookHandler.UpdateBook).Methods("PUT")
+	router.HandleFunc("/books/{id}", bookHandler.DeleteBook).Methods("DELETE")
 	return router
 }

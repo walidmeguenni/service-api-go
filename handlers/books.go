@@ -2,16 +2,41 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/go-playground/validator/v10"
-	"github.com/gorilla/mux"
 	"net/http"
 	"service-api/models"
 	"service-api/utils/types"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/mux"
+	"gorm.io/gorm"
 )
 
 var books []models.Book
 
-func GetBooks(w http.ResponseWriter, _ *http.Request) {
+type BookHandler struct {
+	DB       *gorm.DB
+	Validate *validator.Validate
+}
+
+func NewBookHandler(db *gorm.DB) *BookHandler {
+	return &BookHandler{
+		DB:       db,
+		Validate: validator.New(),
+	}
+}
+
+func (bh *BookHandler) GetBooks(w http.ResponseWriter, _ *http.Request) {
+	var books []models.Book;
+	if err:= bh.DB.Find(&books).Error;
+	err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(types.Response{
+			Status:  false,
+			Message: "Error getting list of books",
+			Data:    nil,
+		})
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(
@@ -23,7 +48,7 @@ func GetBooks(w http.ResponseWriter, _ *http.Request) {
 	)
 }
 
-func CreateBook(w http.ResponseWriter, r *http.Request) {
+func (bh *BookHandler)  CreateBook(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	w.Header().Set("Content-Type", "application/json")
 	var book models.Book
@@ -48,7 +73,18 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	books = append(books, book)
+
+	if err := bh.DB.Create(&book).Error;
+	err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(types.Response{
+			Status:  false,
+			Message: "Failed to save book to database: " + err.Error(),
+			Data:    nil,
+		})
+		return
+	}
+
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(
 		types.Response{
@@ -59,7 +95,7 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func GetBookById(w http.ResponseWriter, r *http.Request) {
+func (bh *BookHandler) GetBookById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	id := params["id"]
@@ -86,73 +122,108 @@ func GetBookById(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func UpdateBook(w http.ResponseWriter, r *http.Request) {
+func (bh *BookHandler)  UpdateBook(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	id := params["id"]
-	for i, item := range books {
-		if item.ID == id {
-			books = append(books[:i], books[i+1:]...)
-			var book models.Book
-			if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(
-					types.Response{
-						Status:  false,
-						Message: err.Error(),
-						Data:    nil,
-					},
-				)
-				return
-			}
-			book.ID = id
-			books = append(books, book)
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(
-				types.Response{
-					Status:  true,
-					Message: "Book updated successfully",
-					Data:    book,
-				},
-			)
-			return
-		}
+
+	var exitingBook models.Book
+	if err := bh.DB.First(&exitingBook, "id = ?", id).Error; err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(
+			types.Response{
+				Status:  false,
+				Message: "Book not found with id" + id,
+				Data:    nil,
+			},
+		)
+		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+
+	var updatedBook models.Book
+	if err := json.NewDecoder(r.Body).Decode(&updatedBook); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(
+			types.Response{
+				Status:  false,
+				Message: "Invalid request body: " + err.Error(),
+				Data:    nil,
+			},
+		)
+		return
+	}
+	if err := bh.Validate.Struct(updatedBook); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(
+			types.Response{
+				Status:  false,
+				Message: "Validation failed:  " + err.Error(),
+				Data:    nil,
+			},
+		)
+		return
+	}
+
+	if err:= bh.DB.Model(&exitingBook).Updates(updatedBook).Error; err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(
+			types.Response{
+				Status:  false,
+				Message: "Failed to update book: " + err.Error(),
+				Data:    nil,
+			},
+		)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(
 		types.Response{
-			Status:  false,
-			Message: "Book not found with id" + id,
-			Data:    nil,
+			Status:  true,
+			Message: "Book updated successfully",
+			Data:    exitingBook,
 		},
 	)
 }
 
-func DeleteBook(w http.ResponseWriter, r *http.Request) {
+func (bh *BookHandler)  DeleteBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	id := params["id"]
-	for i, item := range books {
-		if item.ID == id {
-			books = append(books[:i], books[i+1:]...)
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(
-				types.Response{
-					Status:  true,
-					Message: "Book deleted successfully",
-					Data:    item,
-				},
-			)
-			return
-		}
+    
+	var book models.Book
+	if err := bh.DB.First(&book, "id = ?", id).Error; err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(
+			types.Response{
+				Status:  false,
+				Message: "Book not found with id" + id,
+				Data:    nil,
+			},
+		)
+		return
 	}
-	w.WriteHeader(http.StatusNotFound)
+
+	if err := bh.DB.Delete(&book).Error; err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(
+			types.Response{
+				Status:  false,
+				Message: "Failed to delete book: " + err.Error(),
+				Data:    nil,
+			},
+		)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(
 		types.Response{
-			Status:  false,
-			Message: "Book not found with id" + id,
-			Data:    nil,
+			Status:  true,
+			Message: "Book deleted successfully",
+			Data:    book,
 		},
 	)
+	
 }

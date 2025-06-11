@@ -1,7 +1,8 @@
 package models
 
 type Book struct {
-   ID string `json:"id" validate:"required"`
-   Title string `json:"title" validate:"required"`
-   Author string  `json:"author" validate:"required"`
+   ID          string  `gorm:"primaryKey" json:"id"`
+   Name        string  `json:"name" validate:"required"`
+   Description string  `json:"description" validate:"required"`
+   Price       float64 `json:"price" validate:"required,gt=0"`
 }
