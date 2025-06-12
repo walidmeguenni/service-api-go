@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"service-api/models"
 	"service-api/utils/types"
+	"service-api/validation"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -51,27 +53,38 @@ func (bh *BookHandler) GetBooks(w http.ResponseWriter, _ *http.Request) {
 func (bh *BookHandler)  CreateBook(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	w.Header().Set("Content-Type", "application/json")
-	var book models.Book
-	if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
+
+	var body validation.CreateBook
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&body); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(
 			types.Response{
 				Status:  false,
-				Message: err.Error(),
+				Message: "Invalid request body: " + err.Error(),
 				Data:    nil,
 			},
 		)
 		return
 	}
 	var validate = validator.New()
-	if err := validate.Struct(book); err != nil {
+	if err := validate.Struct(body); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(types.Response{
 			Status:  false,
-			Message: err.Error(),
+			Message: "Invalid request body: " + err.Error(),
 			Data:    nil,
 		})
 		return
+	}
+
+	book := models.Book{
+		Name:        body.Name,
+		Description: body.Description,
+		Price:       body.Price,
 	}
 
 	if err := bh.DB.Create(&book).Error;
@@ -98,7 +111,19 @@ func (bh *BookHandler)  CreateBook(w http.ResponseWriter, r *http.Request) {
 func (bh *BookHandler) GetBookById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
-	id := params["id"]
+	id_64, err := strconv.ParseUint(params["id"], 0, 64);
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(
+			types.Response{
+				Status:  false,
+				Message: "Invalid book id",
+				Data:    nil,
+			},
+		)
+		return
+	}
+    id := uint(id_64)
 	for _, item := range books {
 		if item.ID == id {
 			w.WriteHeader(http.StatusOK)
@@ -116,7 +141,7 @@ func (bh *BookHandler) GetBookById(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(
 		types.Response{
 			Status:  false,
-			Message: "Book not found with id" + id,
+			Message: "Book not found with id" + params["id"],
 			Data:    nil,
 		},
 	)
