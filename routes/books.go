@@ -15,7 +15,7 @@ func SetupRouters(db *gorm.DB) *mux.Router {
 	router.HandleFunc("/books", bookHandler.GetBooks).Methods("GET")
 	router.HandleFunc("/books", bookHandler.CreateBook).Methods("POST")
 	router.HandleFunc("/books/{id}", bookHandler.GetBookById).Methods("GET")
-	router.HandleFunc("/books/{id}", bookHandler.UpdateBook).Methods("PUT")
+	router.HandleFunc("/books/{id}", bookHandler.UpdateBook).Methods("PATCH")
 	router.HandleFunc("/books/{id}", bookHandler.DeleteBook).Methods("DELETE")
 	return router
 }

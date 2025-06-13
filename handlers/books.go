@@ -214,18 +214,6 @@ func (bh *BookHandler)  UpdateBook(w http.ResponseWriter, r *http.Request) {
 		updatedBook.Price = *body.Price
 	}
 
-	if err := bh.Validate.Struct(updatedBook); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(
-			types.Response{
-				Status:  false,
-				Message: "Validation failed:  " + err.Error(),
-				Data:    nil,
-			},
-		)
-		return
-	}
-
 	if err:= bh.DB.Model(&existingBook).Updates(updatedBook).Error; err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(
